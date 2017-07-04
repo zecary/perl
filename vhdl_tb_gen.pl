@@ -1,4 +1,9 @@
+################################################################################
+# This script scans a VHDL source file and generates a VHDL testbench using
+# scanned entitity information
+################################################################################
 #!/usr/bin/perl
+
 use strict;
 use warnings;
 
@@ -22,7 +27,7 @@ my $fileName = shift;
 
 die "Must import a VHDL source file!\n" unless ($fileName =~ m/.*.vhd/i);
 
-open (my $srcCodeFH, '<', $fileName) or 
+open (my $srcCodeFH, '<', $fileName) or
   die "Couldn't find the VHDL source code with the given file name!\n";
 
 my @srcCode     = <$srcCodeFH>;
@@ -42,7 +47,7 @@ foreach (@srcCode) {
     $entityName = $2;
     $copyEn = 1;
   }
-  
+
   # Preserve the entity body
   if ($copyEn and (not /^\s*--\s*/)) {
     if (/;/) {
@@ -52,12 +57,12 @@ foreach (@srcCode) {
     }
     push (@entityBody, $_);
   }
-  
-  # Search the package 
+
+  # Search the package
   if (/^\s*package\s*($entityName)_pkg\s*is$/) {
     $packageName = "$entityName".'_pkg';
   }
-  
+
   if (/^\s*end\s+$entityName\s*;/x) {
     $copyEn = 0;
   }
@@ -78,7 +83,7 @@ if ((scalar @entityBody) == 0) {
     if ($sigName =~ m?.*(clk|clock).*?i and $sigDir =~ m/in/i and $sigType =~ m/std_logic/i) {
       $ioClock = $sigName;
     } elsif ($sigName =~ m?.*(rst|reset).*?i and $sigDir =~ m/in/i and $sigType =~ m/std_logic/i) {
-      $ioReset = $sigName; 
+      $ioReset = $sigName;
     } else {
       push (@ioList, [$sigName, $sigDir, $sigType]);
     }
@@ -86,9 +91,9 @@ if ((scalar @entityBody) == 0) {
 }
 
 # last, spit out the TB file
-open (my $tbCodeFH, '>', $entityName."_tb.vhd") or 
+open (my $tbCodeFH, '>', $entityName."_tb.vhd") or
   die "Couldn't create testbench file!\n";
-  
+
 select $tbCodeFH;
 
 # print Copyright
@@ -113,11 +118,11 @@ print "use work.$packageName.all\n\n" unless $packageName eq "";
 
 # Print entity
 print <<TestbenchEntity;
-entity $entityName\_tb is 
+entity $entityName\_tb is
 generic
 (
   -- Testbench generic(s) here
-  
+
 );
 end entity tb of $entityName\_tb;
 
@@ -133,7 +138,7 @@ if ($packageName eq "") {
     $string =~ s/\s*end(.*)/end component;\n\n/;
     chomp($string);
     print "  $string\n";
-  } 
+  }
 }
 
 print "  -- Constant declaration(s) here\n";
@@ -151,10 +156,10 @@ foreach my $string (@ioList) {
       print "  signal @$string[0] : @$string[2] := '0';\n";
     } elsif (@$string[2] =~ m/std_logic_vector.+/i) {
       print "  signal @$string[0] : @$string[2] := (others => '0');\n";
-    } 
+    }
   } else {
      print "  signal @$string[0] : @$string[2] -- NR;\n";
-  } 
+  }
 }
 print "\n";
 
@@ -174,7 +179,7 @@ foreach my $string (@entityBody) {
   $string =~ s/\s*end(.*)//;
   chomp($string);
   print "  $string\n";
-} 
+}
 
 # Print Testbench clock generation and stimulus processes
 $ioClock = '<UUT_CLOCK>' unless $ioClock ne "";
@@ -201,8 +206,8 @@ print <<TestbenchStimulus;
     $ioReset <= '1';
     -- Simulus goes here
     -- ...
-    -- 
-    
+    --
+
     sim_done <= true;
     wait;
   end process stim_proc;
